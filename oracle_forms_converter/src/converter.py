@@ -24,6 +24,24 @@ class FormsConverter:
         # Create output directory if it doesn't exist
         os.makedirs(self.output_dir, exist_ok=True)
 
+    def find_oracle_frmf2xml_bat(self):
+        """Find the original Oracle frmf2xml.bat script"""
+        if not self.oracle_home:
+            return None
+
+        # Common locations for frmf2xml.bat in Oracle Forms installation
+        possible_locations = [
+            os.path.join(self.oracle_home, 'bin', 'frmf2xml.bat'),
+            os.path.join(self.oracle_home, 'forms', 'frmf2xml.bat'),
+            os.path.join(self.oracle_home, 'frmf2xml.bat'),
+        ]
+
+        for bat_path in possible_locations:
+            if os.path.exists(bat_path):
+                return bat_path
+
+        return None
+
     def create_batch_script(self):
         """Create the frmf2xml.bat script dynamically"""
         batch_content = f"""@ECHO OFF
@@ -102,10 +120,22 @@ ENDLOCAL
             base_name = os.path.splitext(os.path.basename(input_file))[0]
             output_file = os.path.join(self.output_dir, f"{base_name}.xml")
 
-            # Create temporary batch script
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.bat', delete=False) as bat_file:
-                bat_file.write(self.create_batch_script())
-                batch_script = bat_file.name
+            # Try to find Oracle's original frmf2xml.bat first
+            oracle_bat = self.find_oracle_frmf2xml_bat()
+            batch_script = None
+            cleanup_batch = False
+
+            if oracle_bat:
+                # Use Oracle's original batch script
+                batch_script = oracle_bat
+                result['conversion_method'] = f'Oracle original: {oracle_bat}'
+            else:
+                # Create our own temporary batch script as fallback
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.bat', delete=False) as bat_file:
+                    bat_file.write(self.create_batch_script())
+                    batch_script = bat_file.name
+                    cleanup_batch = True
+                result['conversion_method'] = 'Generated batch script'
 
             try:
                 # Prepare command
@@ -146,11 +176,12 @@ ENDLOCAL
                     result['error'] = f"No se generó el archivo XML. STDERR: {stderr}"
 
             finally:
-                # Clean up temporary batch file
-                try:
-                    os.unlink(batch_script)
-                except:
-                    pass
+                # Clean up temporary batch file (only if we created it)
+                if cleanup_batch and batch_script:
+                    try:
+                        os.unlink(batch_script)
+                    except:
+                        pass
 
         except subprocess.TimeoutExpired:
             result['error'] = "La conversión excedió el tiempo límite (2 minutos)"
@@ -228,8 +259,16 @@ ENDLOCAL
             'output_dir': self.output_dir,
             'jars_found': [],
             'jars_missing': [],
-            'java_executable': None
+            'java_executable': None,
+            'oracle_frmf2xml_bat': None,
+            'has_oracle_bat': False
         }
+
+        # Check for Oracle's original frmf2xml.bat
+        oracle_bat = self.find_oracle_frmf2xml_bat()
+        if oracle_bat:
+            info['oracle_frmf2xml_bat'] = oracle_bat
+            info['has_oracle_bat'] = True
 
         if self.oracle_home and os.path.exists(self.oracle_home):
             # Check all possible JARs

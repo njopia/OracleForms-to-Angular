@@ -645,6 +645,18 @@ Configuración:
             report += "✗ Java NO encontrado\n"
         report += "\n"
 
+        report += "🔧 ORACLE FRMF2XML.BAT:\n"
+        report += "-" * 70 + "\n"
+        if diag['has_oracle_bat']:
+            report += f"✓ Oracle frmf2xml.bat encontrado: {diag['oracle_frmf2xml_bat']}\n"
+            report += "  → Se usará el script ORIGINAL de Oracle (¡Recomendado!)\n"
+            report += "  → No es necesario tener todos los JARs en jlib\n"
+        else:
+            report += "✗ Oracle frmf2xml.bat NO encontrado\n"
+            report += "  → Se generará un script temporal\n"
+            report += "  → Requiere que todos los JARs estén presentes\n"
+        report += "\n"
+
         report += "📦 ARCHIVOS JAR:\n"
         report += "-" * 70 + "\n"
 
@@ -678,14 +690,26 @@ Configuración:
         critical_jars = ['jlib\\frmxmltools.jar', 'jlib\\frmf2xml.jar', 'jlib\\frmdapi.jar', 'jlib\\frmjdapi.jar']
         missing_critical = [j for j in critical_jars if j in diag['jars_missing']]
 
-        if missing_critical:
+        if missing_critical and not diag['has_oracle_bat']:
             report += "3. JARs críticos faltantes:\n"
             for jar in missing_critical:
                 report += f"   ✗ {jar}\n"
-            report += "   Estos archivos son necesarios para la conversión.\n"
-            report += "   Verifique que Oracle Forms esté completamente instalado.\n\n"
+            report += "   OPCIONES:\n"
+            report += "   a) Instale Oracle Forms Developer Suite completo\n"
+            report += "   b) Busque frmf2xml.bat en su sistema y actualice Oracle Home\n"
+            report += "   c) Copie los JARs faltantes de otra instalación Oracle\n\n"
+        elif missing_critical and diag['has_oracle_bat']:
+            report += "3. Algunos JARs faltan, PERO:\n"
+            report += f"   ✓ Se encontró frmf2xml.bat de Oracle en: {diag['oracle_frmf2xml_bat']}\n"
+            report += "   → El script de Oracle manejará sus propias dependencias\n"
+            report += "   → Los JARs faltantes NO son críticos en este caso\n\n"
 
-        if diag['jars_found'] and diag['java_executable'] and diag['oracle_home_exists']:
+        if diag['has_oracle_bat']:
+            report += "✓ CONFIGURACIÓN ÓPTIMA:\n"
+            report += "  → Usando el frmf2xml.bat ORIGINAL de Oracle\n"
+            report += "  → Oracle maneja sus propias dependencias\n"
+            report += "  → La conversión debería funcionar correctamente\n\n"
+        elif diag['jars_found'] and diag['java_executable'] and diag['oracle_home_exists']:
             report += "✓ La configuración parece correcta.\n"
             report += "  Si aún hay problemas de conversión:\n"
             report += "  - Verifique permisos de archivos\n"
@@ -792,6 +816,10 @@ Configuración:
             try:
                 result = self.converter.convert_file(file_path)
                 self.conversion_results.append(result)
+
+                # Show conversion method
+                if 'conversion_method' in result:
+                    self.log_message(f"  Método: {result['conversion_method']}")
 
                 if result['success']:
                     self.log_message(f"  ✓ Éxito: {result['output_file']}")
