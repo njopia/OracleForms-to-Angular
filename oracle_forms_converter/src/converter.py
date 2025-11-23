@@ -31,9 +31,14 @@ class FormsConverter:
 
         # Common locations for frmf2xml.bat in Oracle Forms installation
         possible_locations = [
+            # Standard locations
             os.path.join(self.oracle_home, 'bin', 'frmf2xml.bat'),
             os.path.join(self.oracle_home, 'forms', 'frmf2xml.bat'),
             os.path.join(self.oracle_home, 'frmf2xml.bat'),
+            # Template scripts location (Oracle 12c+) - Esta es tu ubicación!
+            os.path.join(self.oracle_home, 'forms', 'templates', 'scripts', 'frmf2xml.bat'),
+            # Alternative bin location
+            os.path.join(self.oracle_home, 'forms', 'bin', 'frmf2xml.bat'),
         ]
 
         for bat_path in possible_locations:
