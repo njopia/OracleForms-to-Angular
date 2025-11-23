@@ -257,13 +257,21 @@ class StepperApp:
         )
         browse_output_btn.grid(row=5, column=2, padx=5, pady=(10, 5))
 
-        # Test button
-        test_btn = ttk.Button(
-            step_frame,
+        # Test and diagnostic buttons
+        button_frame = ttk.Frame(step_frame)
+        button_frame.grid(row=6, column=1, pady=20)
+
+        ttk.Button(
+            button_frame,
             text="Verificar Configuración",
             command=self.test_configuration
-        )
-        test_btn.grid(row=6, column=1, pady=20)
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(
+            button_frame,
+            text="🔍 Diagnóstico Detallado",
+            command=self.show_diagnostic
+        ).pack(side=tk.LEFT, padx=5)
 
         # Auto-detect on first load if fields are empty
         if not self.oracle_home_var.get() and not self.java_home_var.get():
@@ -560,24 +568,140 @@ Configuración:
         java_home = self.java_home_var.get()
         output_dir = self.output_dir_var.get()
 
-        errors = []
+        # Update converter config
+        self.converter.set_config(oracle_home, java_home, output_dir)
 
-        if not oracle_home or not os.path.exists(oracle_home):
-            errors.append("Oracle Forms Home no existe")
-
-        if java_home and not os.path.exists(java_home):
-            errors.append("JAVA_HOME especificado no existe")
-
-        if not output_dir:
-            errors.append("Debe especificar un directorio de salida")
+        # Validate
+        is_valid, errors, warnings = self.converter.validate_setup()
 
         if errors:
-            messagebox.showerror("Error de Configuración", "\n".join(errors))
+            error_msg = "Errores encontrados:\n\n" + "\n".join(f"• {e}" for e in errors)
+            if warnings:
+                error_msg += "\n\nAdvertencias:\n" + "\n".join(f"• {w}" for w in warnings)
+            messagebox.showerror("Error de Configuración", error_msg)
         else:
             # Save configuration
             self.config_manager.save_config(oracle_home, java_home, output_dir)
-            self.converter.set_config(oracle_home, java_home, output_dir)
-            messagebox.showinfo("Éxito", "Configuración válida y guardada correctamente")
+
+            success_msg = "✓ Configuración válida y guardada correctamente"
+            if warnings:
+                success_msg += "\n\nAdvertencias:\n" + "\n".join(f"• {w}" for w in warnings)
+            messagebox.showinfo("Éxito", success_msg)
+
+    def show_diagnostic(self):
+        """Show detailed diagnostic information"""
+        oracle_home = self.oracle_home_var.get()
+        java_home = self.java_home_var.get()
+        output_dir = self.output_dir_var.get()
+
+        # Update converter config
+        self.converter.set_config(oracle_home, java_home, output_dir)
+
+        # Get diagnostic info
+        diag = self.converter.get_diagnostic_info()
+
+        # Create diagnostic window
+        diag_window = tk.Toplevel(self.root)
+        diag_window.title("Diagnóstico Detallado")
+        diag_window.geometry("700x600")
+
+        # Main frame
+        main_frame = ttk.Frame(diag_window, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Title
+        ttk.Label(
+            main_frame,
+            text="Diagnóstico de Configuración",
+            font=("Arial", 14, "bold")
+        ).pack(pady=(0, 15))
+
+        # Scrolled text for diagnostic info
+        text_area = scrolledtext.ScrolledText(
+            main_frame,
+            wrap=tk.WORD,
+            height=25,
+            font=("Courier New", 9)
+        )
+        text_area.pack(fill=tk.BOTH, expand=True)
+
+        # Build diagnostic report
+        report = "=" * 70 + "\n"
+        report += "DIAGNÓSTICO DE CONFIGURACIÓN - Oracle Forms to XML Converter\n"
+        report += "=" * 70 + "\n\n"
+
+        report += "📁 RUTAS CONFIGURADAS:\n"
+        report += "-" * 70 + "\n"
+        report += f"Oracle Home: {diag['oracle_home'] or '(no configurado)'}\n"
+        report += f"  Existe: {'✓ SÍ' if diag['oracle_home_exists'] else '✗ NO'}\n\n"
+        report += f"Java Home: {diag['java_home'] or '(no configurado - se usará el de Oracle)'}\n\n"
+        report += f"Output Dir: {diag['output_dir'] or '(no configurado)'}\n\n"
+
+        report += "☕ JAVA:\n"
+        report += "-" * 70 + "\n"
+        if diag['java_executable']:
+            report += f"✓ Java encontrado: {diag['java_executable']}\n"
+        else:
+            report += "✗ Java NO encontrado\n"
+        report += "\n"
+
+        report += "📦 ARCHIVOS JAR:\n"
+        report += "-" * 70 + "\n"
+
+        if diag['jars_found']:
+            report += f"✓ JARs encontrados ({len(diag['jars_found'])}):\n"
+            for jar in diag['jars_found']:
+                report += f"  ✓ {jar}\n"
+        else:
+            report += "✗ No se encontraron JARs\n"
+
+        if diag['jars_missing']:
+            report += f"\n✗ JARs faltantes ({len(diag['jars_missing'])}):\n"
+            for jar in diag['jars_missing']:
+                report += f"  ✗ {jar}\n"
+
+        report += "\n" + "=" * 70 + "\n"
+        report += "RECOMENDACIONES:\n"
+        report += "=" * 70 + "\n\n"
+
+        # Add recommendations
+        if not diag['oracle_home_exists']:
+            report += "1. Configure Oracle Home correctamente\n"
+            report += "   - Debe apuntar al directorio de instalación de Oracle Forms\n"
+            report += "   - Ejemplo: C:\\Oracle\\Middleware\\Oracle_FRHome1\n\n"
+
+        if not diag['java_executable']:
+            report += "2. Configure Java:\n"
+            report += "   - Configure la variable JAVA_HOME\n"
+            report += "   - O asegúrese que Oracle incluya JDK\n\n"
+
+        critical_jars = ['jlib\\frmxmltools.jar', 'jlib\\frmf2xml.jar', 'jlib\\frmdapi.jar', 'jlib\\frmjdapi.jar']
+        missing_critical = [j for j in critical_jars if j in diag['jars_missing']]
+
+        if missing_critical:
+            report += "3. JARs críticos faltantes:\n"
+            for jar in missing_critical:
+                report += f"   ✗ {jar}\n"
+            report += "   Estos archivos son necesarios para la conversión.\n"
+            report += "   Verifique que Oracle Forms esté completamente instalado.\n\n"
+
+        if diag['jars_found'] and diag['java_executable'] and diag['oracle_home_exists']:
+            report += "✓ La configuración parece correcta.\n"
+            report += "  Si aún hay problemas de conversión:\n"
+            report += "  - Verifique permisos de archivos\n"
+            report += "  - Revise el log de conversión para detalles\n"
+            report += "  - Asegúrese que los archivos .fmb no estén corruptos\n"
+
+        # Insert report
+        text_area.insert('1.0', report)
+        text_area.config(state=tk.DISABLED)
+
+        # Close button
+        ttk.Button(
+            main_frame,
+            text="Cerrar",
+            command=diag_window.destroy
+        ).pack(pady=(10, 0))
 
     def add_files(self):
         """Add individual files"""

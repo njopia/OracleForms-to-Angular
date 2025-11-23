@@ -61,7 +61,15 @@ goto end
 :java_found
 
 REM Run the tool with the required jar files added to the classpath
-%FORMS_JDK_HOME%\\java -classpath {self.oracle_home}\\jlib\\frmxmltools.jar;{self.oracle_home}\\jlib\\frmf2xml.jar;{self.oracle_home}\\jlib\\frmdapi.jar;{self.oracle_home}\\oracle_common\\modules\\oracle.xdk\\xmlparserv2.jar oracle.forms.util.xmltools.Forms2XML %*
+set CLASSPATH={self.oracle_home}\\jlib\\frmxmltools.jar
+set CLASSPATH=%CLASSPATH%;{self.oracle_home}\\jlib\\frmf2xml.jar
+set CLASSPATH=%CLASSPATH%;{self.oracle_home}\\jlib\\frmdapi.jar
+set CLASSPATH=%CLASSPATH%;{self.oracle_home}\\jlib\\frmjdapi.jar
+set CLASSPATH=%CLASSPATH%;{self.oracle_home}\\jlib\\xmlparserv2.jar
+set CLASSPATH=%CLASSPATH%;{self.oracle_home}\\oracle_common\\modules\\oracle.xdk\\xmlparserv2.jar
+set CLASSPATH=%CLASSPATH%;{self.oracle_home}\\forms\\java\\frmall.jar
+
+%FORMS_JDK_HOME%\\java -classpath %CLASSPATH% oracle.forms.util.xmltools.Forms2XML %*
 
 :end
 
@@ -168,6 +176,7 @@ ENDLOCAL
     def validate_setup(self):
         """Validate that all required components are available"""
         errors = []
+        warnings = []
 
         if not self.oracle_home:
             errors.append("Oracle Home no configurado")
@@ -176,15 +185,22 @@ ENDLOCAL
         else:
             # Check for required JAR files
             required_jars = [
-                'jlib\\frmxmltools.jar',
-                'jlib\\frmf2xml.jar',
-                'jlib\\frmdapi.jar'
+                ('jlib\\frmxmltools.jar', True),
+                ('jlib\\frmf2xml.jar', True),
+                ('jlib\\frmdapi.jar', True),
+                ('jlib\\frmjdapi.jar', True),
+                ('jlib\\xmlparserv2.jar', False),  # May be in oracle_common instead
+                ('oracle_common\\modules\\oracle.xdk\\xmlparserv2.jar', False),
+                ('forms\\java\\frmall.jar', False),
             ]
 
-            for jar in required_jars:
+            for jar, is_critical in required_jars:
                 jar_path = os.path.join(self.oracle_home, jar)
                 if not os.path.exists(jar_path):
-                    errors.append(f"JAR requerido no encontrado: {jar}")
+                    if is_critical:
+                        errors.append(f"JAR crítico no encontrado: {jar}")
+                    else:
+                        warnings.append(f"JAR opcional no encontrado: {jar}")
 
         if not self.output_dir:
             errors.append("Directorio de salida no configurado")
@@ -201,4 +217,45 @@ ENDLOCAL
         if not java_found:
             errors.append("Java no encontrado. Configure JAVA_HOME o use el JDK incluido en Oracle")
 
-        return len(errors) == 0, errors
+        return len(errors) == 0, errors, warnings
+
+    def get_diagnostic_info(self):
+        """Get detailed diagnostic information about the setup"""
+        info = {
+            'oracle_home': self.oracle_home,
+            'oracle_home_exists': os.path.exists(self.oracle_home) if self.oracle_home else False,
+            'java_home': self.java_home,
+            'output_dir': self.output_dir,
+            'jars_found': [],
+            'jars_missing': [],
+            'java_executable': None
+        }
+
+        if self.oracle_home and os.path.exists(self.oracle_home):
+            # Check all possible JARs
+            possible_jars = [
+                'jlib\\frmxmltools.jar',
+                'jlib\\frmf2xml.jar',
+                'jlib\\frmdapi.jar',
+                'jlib\\frmjdapi.jar',
+                'jlib\\xmlparserv2.jar',
+                'oracle_common\\modules\\oracle.xdk\\xmlparserv2.jar',
+                'forms\\java\\frmall.jar',
+            ]
+
+            for jar in possible_jars:
+                jar_path = os.path.join(self.oracle_home, jar)
+                if os.path.exists(jar_path):
+                    info['jars_found'].append(jar)
+                else:
+                    info['jars_missing'].append(jar)
+
+        # Find Java executable
+        if self.java_home and os.path.exists(os.path.join(self.java_home, 'bin', 'java.exe')):
+            info['java_executable'] = os.path.join(self.java_home, 'bin', 'java.exe')
+        elif self.oracle_home:
+            oracle_java = os.path.join(self.oracle_home, 'oracle_common', 'jdk', 'bin', 'java.exe')
+            if os.path.exists(oracle_java):
+                info['java_executable'] = oracle_java
+
+        return info
