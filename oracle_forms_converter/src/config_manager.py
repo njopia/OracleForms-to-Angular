@@ -112,3 +112,76 @@ class ConfigManager:
     def get_last_input_dir(self):
         """Get last used input directory"""
         return self.config.get('last_input_dir', '')
+
+    def detect_oracle_home(self):
+        """Detect Oracle Home from environment variables"""
+        # Try ORACLE_HOME first
+        oracle_home = os.environ.get('ORACLE_HOME', '')
+        if oracle_home and os.path.exists(oracle_home):
+            return oracle_home, 'ORACLE_HOME environment variable'
+
+        # Try common Oracle installation paths on Windows
+        common_paths = [
+            r'C:\Oracle\Middleware\Oracle_FRHome1',
+            r'C:\Oracle\product\12.2.0\dbhome_1',
+            r'C:\app\oracle\product\12.2.0\dbhome_1',
+        ]
+
+        for path in common_paths:
+            if os.path.exists(path):
+                # Verify it's a valid Oracle Forms installation
+                if os.path.exists(os.path.join(path, 'jlib')):
+                    return path, f'Auto-detected from {path}'
+
+        return '', 'Not detected'
+
+    def detect_java_home(self):
+        """Detect Java Home from environment variables"""
+        # Try JAVA_HOME first
+        java_home = os.environ.get('JAVA_HOME', '')
+        if java_home and os.path.exists(java_home):
+            return java_home, 'JAVA_HOME environment variable'
+
+        # Try to find Java in Oracle installation
+        oracle_home = os.environ.get('ORACLE_HOME', '')
+        if oracle_home:
+            oracle_jdk = os.path.join(oracle_home, 'oracle_common', 'jdk')
+            if os.path.exists(oracle_jdk):
+                return oracle_jdk, 'Oracle JDK (included with Oracle Forms)'
+
+        # Try common Java paths on Windows
+        common_paths = [
+            r'C:\Program Files\Java\jdk1.8.0_281',
+            r'C:\Program Files\Java\jdk-11',
+            r'C:\Program Files\Java\jdk-8',
+        ]
+
+        # List all JDK directories
+        java_base = r'C:\Program Files\Java'
+        if os.path.exists(java_base):
+            try:
+                java_dirs = [d for d in os.listdir(java_base) if d.startswith('jdk')]
+                if java_dirs:
+                    # Get the first JDK found
+                    jdk_path = os.path.join(java_base, java_dirs[0])
+                    return jdk_path, f'Auto-detected from {jdk_path}'
+            except:
+                pass
+
+        for path in common_paths:
+            if os.path.exists(path):
+                return path, f'Auto-detected from {path}'
+
+        return '', 'Not detected (optional - will use Oracle JDK)'
+
+    def auto_detect_all(self):
+        """Auto-detect all configuration paths"""
+        oracle_home, oracle_source = self.detect_oracle_home()
+        java_home, java_source = self.detect_java_home()
+
+        return {
+            'oracle_home': oracle_home,
+            'oracle_source': oracle_source,
+            'java_home': java_home,
+            'java_source': java_source
+        }

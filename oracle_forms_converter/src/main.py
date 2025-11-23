@@ -183,44 +183,79 @@ class StepperApp:
         step_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=20, pady=20)
         step_frame.columnconfigure(1, weight=1)
 
+        # Auto-detect button at the top
+        auto_detect_frame = ttk.Frame(step_frame)
+        auto_detect_frame.grid(row=0, column=0, columnspan=3, pady=(0, 15))
+
+        ttk.Button(
+            auto_detect_frame,
+            text="🔍 Detectar Automáticamente",
+            command=self.auto_detect_paths
+        ).pack(side=tk.LEFT, padx=5)
+
+        self.detection_status_label = ttk.Label(
+            auto_detect_frame,
+            text="",
+            foreground="gray"
+        )
+        self.detection_status_label.pack(side=tk.LEFT, padx=10)
+
         # Oracle Home path
-        ttk.Label(step_frame, text="Oracle Forms Home:").grid(row=0, column=0, sticky=tk.W, pady=10)
+        ttk.Label(step_frame, text="Oracle Forms Home:").grid(row=1, column=0, sticky=tk.W, pady=(10, 5))
         self.oracle_home_var = tk.StringVar(value=self.config_manager.get_oracle_home())
         oracle_entry = ttk.Entry(step_frame, textvariable=self.oracle_home_var, width=50)
-        oracle_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=10, pady=10)
+        oracle_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=10, pady=(10, 5))
 
         browse_oracle_btn = ttk.Button(
             step_frame,
             text="Examinar...",
             command=self.browse_oracle_home
         )
-        browse_oracle_btn.grid(row=0, column=2, padx=5, pady=10)
+        browse_oracle_btn.grid(row=1, column=2, padx=5, pady=(10, 5))
+
+        # Oracle Home status label
+        self.oracle_status_label = ttk.Label(
+            step_frame,
+            text="",
+            foreground="gray",
+            font=("Arial", 8)
+        )
+        self.oracle_status_label.grid(row=2, column=1, sticky=tk.W, padx=10, pady=(0, 10))
 
         # JAVA_HOME path
-        ttk.Label(step_frame, text="JAVA_HOME (opcional):").grid(row=1, column=0, sticky=tk.W, pady=10)
+        ttk.Label(step_frame, text="JAVA_HOME (opcional):").grid(row=3, column=0, sticky=tk.W, pady=(10, 5))
         self.java_home_var = tk.StringVar(value=self.config_manager.get_java_home())
         java_entry = ttk.Entry(step_frame, textvariable=self.java_home_var, width=50)
-        java_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=10, pady=10)
+        java_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=10, pady=(10, 5))
 
         browse_java_btn = ttk.Button(
             step_frame,
             text="Examinar...",
             command=self.browse_java_home
         )
-        browse_java_btn.grid(row=1, column=2, padx=5, pady=10)
+        browse_java_btn.grid(row=3, column=2, padx=5, pady=(10, 5))
+
+        # Java Home status label
+        self.java_status_label = ttk.Label(
+            step_frame,
+            text="",
+            foreground="gray",
+            font=("Arial", 8)
+        )
+        self.java_status_label.grid(row=4, column=1, sticky=tk.W, padx=10, pady=(0, 10))
 
         # Output directory
-        ttk.Label(step_frame, text="Directorio de salida:").grid(row=2, column=0, sticky=tk.W, pady=10)
+        ttk.Label(step_frame, text="Directorio de salida:").grid(row=5, column=0, sticky=tk.W, pady=(10, 5))
         self.output_dir_var = tk.StringVar(value=self.config_manager.get_output_dir())
         output_entry = ttk.Entry(step_frame, textvariable=self.output_dir_var, width=50)
-        output_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=10, pady=10)
+        output_entry.grid(row=5, column=1, sticky=(tk.W, tk.E), padx=10, pady=(10, 5))
 
         browse_output_btn = ttk.Button(
             step_frame,
             text="Examinar...",
             command=self.browse_output_dir
         )
-        browse_output_btn.grid(row=2, column=2, padx=5, pady=10)
+        browse_output_btn.grid(row=5, column=2, padx=5, pady=(10, 5))
 
         # Test button
         test_btn = ttk.Button(
@@ -228,17 +263,21 @@ class StepperApp:
             text="Verificar Configuración",
             command=self.test_configuration
         )
-        test_btn.grid(row=3, column=1, pady=20)
+        test_btn.grid(row=6, column=1, pady=20)
+
+        # Auto-detect on first load if fields are empty
+        if not self.oracle_home_var.get() and not self.java_home_var.get():
+            self.root.after(100, self.auto_detect_paths)
 
         # Info label
         info_text = """
-Configuración requerida:
-• Oracle Forms Home: Directorio donde está instalado Oracle Forms Developer
-• JAVA_HOME: Directorio de instalación de Java (se detectará automáticamente si no se especifica)
+Configuración:
+• Oracle Forms Home: Requerido - Directorio de instalación de Oracle Forms Developer
+• JAVA_HOME: Opcional - Se detectará automáticamente desde variables de entorno o Oracle
 • Directorio de salida: Donde se guardarán los archivos XML generados
         """
         info_label = ttk.Label(step_frame, text=info_text, justify=tk.LEFT, foreground="gray")
-        info_label.grid(row=4, column=0, columnspan=3, pady=10)
+        info_label.grid(row=7, column=0, columnspan=3, pady=10)
 
     def show_file_selection_step(self):
         """Step 2: File Selection"""
@@ -457,6 +496,63 @@ Configuración requerida:
         directory = filedialog.askdirectory(title="Seleccionar directorio de salida")
         if directory:
             self.output_dir_var.set(directory)
+
+    def auto_detect_paths(self):
+        """Auto-detect Oracle Home and Java Home from environment"""
+        detection_results = self.config_manager.auto_detect_all()
+
+        # Update Oracle Home
+        oracle_home = detection_results['oracle_home']
+        oracle_source = detection_results['oracle_source']
+
+        if oracle_home:
+            # Only update if current value is empty
+            if not self.oracle_home_var.get():
+                self.oracle_home_var.set(oracle_home)
+            self.oracle_status_label.config(
+                text=f"✓ {oracle_source}",
+                foreground="green"
+            )
+        else:
+            self.oracle_status_label.config(
+                text=f"✗ {oracle_source}",
+                foreground="orange"
+            )
+
+        # Update Java Home
+        java_home = detection_results['java_home']
+        java_source = detection_results['java_source']
+
+        if java_home:
+            # Only update if current value is empty
+            if not self.java_home_var.get():
+                self.java_home_var.set(java_home)
+            self.java_status_label.config(
+                text=f"✓ {java_source}",
+                foreground="green"
+            )
+        else:
+            self.java_status_label.config(
+                text=f"ℹ {java_source}",
+                foreground="gray"
+            )
+
+        # Update detection status
+        if oracle_home and java_home:
+            self.detection_status_label.config(
+                text="✓ Detección completada exitosamente",
+                foreground="green"
+            )
+        elif oracle_home:
+            self.detection_status_label.config(
+                text="✓ Oracle detectado. Java será usado desde Oracle.",
+                foreground="green"
+            )
+        else:
+            self.detection_status_label.config(
+                text="⚠ No se pudo detectar Oracle Home automáticamente",
+                foreground="orange"
+            )
 
     def test_configuration(self):
         """Test if configuration is valid"""
