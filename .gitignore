@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Application specific
+oracle_forms_converter/config/settings.json
+oracle_forms_converter/output/*.xml
+oracle_forms_converter/logs/*.log
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.bat.tmp
+
+# Test files
+test_forms/
+sample_output/
