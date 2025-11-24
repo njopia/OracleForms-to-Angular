@@ -135,22 +135,261 @@ Revisa los resultados de la conversión:
   - **Exportar Log**: Guarda un registro detallado en archivo de texto
   - **Finalizar**: Opción de procesar más archivos o cerrar
 
+---
+
+## 🚀 NUEVO: Pipeline Completo de Migración a Angular
+
+### Migración Automática: Oracle Forms → Angular
+
+A partir de la versión 2.0, el proyecto incluye un **pipeline completo** que no solo convierte Forms a XML, sino que **genera automáticamente componentes Angular completos** listos para usar.
+
+### Características del Pipeline
+
+```
+Oracle Forms (.fmb) → XML → Análisis → Angular (Components + Services + Models)
+```
+
+#### ¿Qué genera?
+
+✅ **Modelos TypeScript** - Interfaces con tipado fuerte
+✅ **Servicios Angular** - CRUD completo con HttpClient
+✅ **Componentes Angular** - .ts, .html, .css
+✅ **Formularios Reactivos** - Con validaciones
+✅ **Tablas de datos** - Con acciones CRUD
+✅ **Reporte HTML** - Documentación de la migración
+
+### Uso del Pipeline Completo
+
+#### Opción 1: Script de Migración por Lotes
+
+```bash
+# Desde un archivo ZIP
+python batch_migrate.py oracle_forms.zip
+
+# Desde un directorio
+python batch_migrate.py /path/to/forms/directory
+
+# Archivo individual
+python batch_migrate.py customer_form.fmb
+```
+
+#### Proceso Automático
+
+1. **Extracción** (si es ZIP) → Encuentra todos los archivos .fmb, .mmb, .olb, .pll
+2. **Conversión** → .fmb → XML usando frmf2xml.bat
+3. **Análisis** → Extrae Data Blocks, Items, Triggers, LOVs, etc.
+4. **Generación** → Crea componentes Angular completos
+5. **Reporte** → Genera `migration_report.html` con estadísticas
+
+#### Estructura Generada
+
+```
+migration_work/
+├── angular_output/
+│   ├── models/                    # Interfaces TypeScript
+│   │   ├── customer.model.ts
+│   │   ├── order.model.ts
+│   │   └── product.model.ts
+│   ├── services/                  # Servicios con CRUD
+│   │   ├── customer.service.ts
+│   │   ├── order.service.ts
+│   │   └── product.service.ts
+│   ├── components/                # Componentes completos
+│   │   ├── customer/
+│   │   │   ├── customer.component.ts
+│   │   │   ├── customer.component.html
+│   │   │   └── customer.component.css
+│   │   ├── order/
+│   │   └── product/
+│   ├── analysis/                  # Estructuras JSON analizadas
+│   │   ├── CUSTOMER_FORM_structure.json
+│   │   └── ORDER_FORM_structure.json
+│   └── migration_report.html     # Reporte detallado
+```
+
+### Ejemplo de Código Generado
+
+#### Modelo TypeScript
+```typescript
+// models/customer.model.ts
+export interface Customer {
+  customerId: number;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  phone?: string | null;
+  createdDate: Date;
+}
+```
+
+#### Servicio Angular
+```typescript
+// services/customer.service.ts
+@Injectable({ providedIn: 'root' })
+export class CustomerService {
+  private apiUrl = '/api/customers';
+
+  constructor(private http: HttpClient) { }
+
+  getAll(): Observable<Customer[]> { /* ... */ }
+  getById(id: number): Observable<Customer> { /* ... */ }
+  create(entity: Customer): Observable<Customer> { /* ... */ }
+  update(id: number, entity: Customer): Observable<Customer> { /* ... */ }
+  delete(id: number): Observable<void> { /* ... */ }
+  search(filters: any): Observable<Customer[]> { /* ... */ }
+}
+```
+
+#### Componente Angular
+```typescript
+// components/customer/customer.component.ts
+@Component({
+  selector: 'app-customer',
+  templateUrl: './customer.component.html',
+  styleUrls: ['./customer.component.css']
+})
+export class CustomerComponent implements OnInit {
+  customerForm: FormGroup;
+  customers: Customer[] = [];
+
+  constructor(
+    private fb: FormBuilder,
+    private customerService: CustomerService
+  ) {
+    this.customerForm = this.createForm();
+  }
+
+  ngOnInit(): void {
+    this.loadData();
+  }
+
+  onSubmit(): void { /* CRUD logic */ }
+  onEdit(entity: Customer): void { /* ... */ }
+  onDelete(entity: Customer): void { /* ... */ }
+}
+```
+
+### Mapeo Automático
+
+#### Tipos de Datos
+| Oracle Forms | TypeScript |
+|-------------|-----------|
+| VARCHAR2 | string |
+| NUMBER | number |
+| DATE | Date |
+| TIMESTAMP | Date |
+| CHAR | string |
+| BLOB | Blob |
+
+#### Convenciones de Nombres
+| Oracle Forms | Angular |
+|-------------|---------|
+| CUSTOMER_MASTER | CustomerMasterComponent |
+| CUSTOMERS | CustomerService |
+| CUSTOMER_ID | customerId |
+| ORDER_DETAILS | order-details.component.ts |
+
+### Arquitectura del Pipeline
+
+```
+┌─────────────────┐
+│  Oracle Forms   │
+│   (.fmb, .mmb)  │
+└────────┬────────┘
+         │
+         ↓ frmf2xml.bat
+┌─────────────────┐
+│      XML        │
+└────────┬────────┘
+         │
+         ↓ xml_analyzer.py
+┌─────────────────┐
+│   Estructura    │
+│   Analizada     │
+└────────┬────────┘
+         │
+         ↓ Generadores
+┌─────────────────┬─────────────────┬─────────────────┐
+│  ModelGenerator │ ServiceGenerator│ComponentGenerator│
+└────────┬────────┴────────┬────────┴────────┬────────┘
+         │                 │                 │
+         ↓                 ↓                 ↓
+   ┌─────────┐      ┌──────────┐     ┌────────────┐
+   │ Models  │      │ Services │     │ Components │
+   │   .ts   │      │   .ts    │     │.ts .html   │
+   └─────────┘      └──────────┘     │   .css     │
+                                      └────────────┘
+```
+
+### Componentes del Sistema
+
+#### 1. **xml_analyzer.py** - Analizador XML
+- Extrae Data Blocks, Items, Triggers
+- Identifica Canvases, Windows, LOVs
+- Analiza relaciones entre bloques
+- Exporta estructura como JSON
+
+#### 2. **type_mapper.py** - Mapeo de Tipos
+- Oracle → TypeScript
+- Generación de validadores Angular
+- Detección de controles HTML por tipo
+
+#### 3. **naming_convention.py** - Convenciones
+- PascalCase, camelCase, kebab-case
+- Singular/Plural automático
+- Nombres de archivos consistentes
+
+#### 4. **Generadores**
+- `model_gen.py` → Interfaces TypeScript
+- `service_gen.py` → Servicios Angular
+- `component_gen.py` → Componentes completos
+
+#### 5. **angular_generator.py** - Orquestador
+- Coordina todo el proceso
+- Genera estructura de directorios
+- Crea reportes HTML
+
+### Personalización
+
+Los archivos generados son **puntos de partida** que puedes personalizar:
+
+- ✅ Código limpio y comentado
+- ✅ Estructura estándar Angular
+- ✅ Preparado para TypeScript strict mode
+- ✅ Incluye manejo de errores básico
+- ⚠️ Ajustar endpoints de API según tu backend
+- ⚠️ Refinar validaciones según reglas de negocio
+- ⚠️ Agregar lógica de triggers específica
+
+---
+
 ## 📂 Estructura del Proyecto
 
 ```
 OracleForms-to-Angular/
 ├── oracle_forms_converter/
 │   ├── src/
-│   │   ├── __init__.py          # Inicialización del paquete
-│   │   ├── main.py              # Aplicación principal con GUI
-│   │   ├── converter.py         # Lógica de conversión
-│   │   └── config_manager.py    # Gestión de configuración
+│   │   ├── __init__.py              # Inicialización del paquete
+│   │   ├── main.py                  # Aplicación principal con GUI
+│   │   ├── converter.py             # Lógica de conversión FMB→XML
+│   │   ├── config_manager.py        # Gestión de configuración
+│   │   ├── xml_analyzer.py          # Analizador de XML de Oracle Forms
+│   │   ├── type_mapper.py           # Mapeo Oracle→TypeScript
+│   │   ├── naming_convention.py     # Convenciones de nombres
+│   │   ├── angular_generator.py     # Orquestador de generación
+│   │   └── generators/
+│   │       ├── __init__.py
+│   │       ├── model_gen.py         # Generador de modelos TS
+│   │       ├── service_gen.py       # Generador de servicios
+│   │       └── component_gen.py     # Generador de componentes
 │   ├── config/
-│   │   └── settings.json        # Configuración guardada (se crea automáticamente)
-│   ├── output/                  # Archivos XML generados (por defecto)
-│   └── logs/                    # Logs de conversión (opcional)
-├── requirements.txt             # Dependencias (solo para referencia)
-└── README.md                    # Este archivo
+│   │   └── settings.json            # Configuración guardada (auto)
+│   ├── output/                      # Archivos XML generados
+│   └── logs/                        # Logs de conversión
+├── batch_migrate.py                 # Script de migración completa
+├── CHANGELOG.md                     # Historial de cambios
+├── QUICKSTART.md                    # Guía rápida
+└── README.md                        # Este archivo
 ```
 
 ## ⚙️ Configuración Avanzada

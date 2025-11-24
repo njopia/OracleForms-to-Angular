@@ -41,9 +41,36 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Comentarios extensos en código
 - Archivo de configuración de ejemplo
 
-## [Unreleased]
+## [2.0.0] - 2025-11-24
 
-### Agregado
+### Agregado - Pipeline Completo de Migración
+- ✨ **Pipeline completo Oracle Forms → Angular**
+- 🚀 Analizador XML de Oracle Forms (xml_analyzer.py)
+  - Extrae Data Blocks, Items, Triggers, LOVs, Canvases, Windows
+  - Analiza relaciones entre bloques
+  - Extrae Program Units y Parameters
+- 🎯 Sistema de mapeo de tipos Oracle → TypeScript (type_mapper.py)
+  - Mapeo automático de tipos de datos
+  - Generación de validadores Angular
+  - Detección de controles HTML según tipo de dato
+- 📝 Sistema de convenciones de nombres (naming_convention.py)
+  - Conversión automática a PascalCase, camelCase, kebab-case
+  - Generación de nombres para componentes, servicios, modelos
+  - Manejo de singular/plural
+- 🏗️ Generadores de código Angular:
+  - **ModelGenerator**: Genera interfaces TypeScript con tipado fuerte
+  - **ServiceGenerator**: Genera servicios con operaciones CRUD completas
+  - **ComponentGenerator**: Genera componentes (.ts, .html, .css)
+- 🎭 Generador maestro (angular_generator.py)
+  - Orquesta todo el proceso de generación
+  - Crea estructura de directorios Angular
+  - Genera reportes HTML detallados
+- 📦 Script de migración por lotes (batch_migrate.py)
+  - Acepta ZIP, directorios o archivos individuales
+  - Conversión automática .fmb → XML → Angular
+  - Reporte de migración con estadísticas
+
+### Agregado - Características Previas
 - ✨ Soporte genérico para todos los tipos de archivos Oracle Forms (.fmb, .mmb, .olb, .pll)
 - 🔧 Sistema de formato de archivos dinámico y extensible
 - 🔧 Métodos estáticos para validación de formatos soportados
@@ -54,6 +81,20 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - 🔄 Refactorizado sistema de extensiones de archivo para ser genérico
 - 🔄 Los diálogos de selección de archivos ahora se construyen dinámicamente
 - 🔄 La interfaz muestra automáticamente todos los formatos soportados
+
+### Estructura Generada
+```
+angular_output/
+├── models/              # Interfaces TypeScript
+├── services/            # Servicios Angular con CRUD
+├── components/          # Componentes completos
+│   └── [entity]/
+│       ├── .component.ts
+│       ├── .component.html
+│       └── .component.css
+├── analysis/            # Estructuras JSON analizadas
+└── migration_report.html
+```
 
 ### Planeado para futuras versiones
 - Soporte para Linux/Mac (scripts shell en lugar de .bat)
