@@ -151,7 +151,10 @@ ENDLOCAL
                     # Creates XML in the same directory as the input file
                     cmd = [batch_script, input_file]
                     # Calculate where Oracle will create the XML
-                    temp_xml = os.path.splitext(input_file)[0] + '.xml'
+                    # Oracle adds extension to filename: empleados_form.fmb -> empleados_form_fmb.xml
+                    base_without_ext = os.path.splitext(input_file)[0]
+                    ext_without_dot = file_ext[1:]  # Remove the dot: .fmb -> fmb
+                    temp_xml = f"{base_without_ext}_{ext_without_dot}.xml"
                 else:
                     # Our generated script syntax: script source=input.fmb dest=output.xml overwrite=yes
                     cmd = [
