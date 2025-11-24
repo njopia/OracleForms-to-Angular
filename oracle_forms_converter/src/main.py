@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from converter import FormsConverter
 from config_manager import ConfigManager
+from angular_generator import AngularGenerator
 
 
 class StepperApp:
@@ -24,9 +25,11 @@ class StepperApp:
 
         # Stepper state
         self.current_step = 0
-        self.max_steps = 4
+        self.max_steps = 5
         self.selected_files = []
         self.conversion_results = []
+        self.xml_files = []  # XMLs generados para Angular
+        self.angular_results = []  # Resultados de generación Angular
 
         # Setup UI
         self.setup_ui()
@@ -88,7 +91,8 @@ class StepperApp:
             "1. Configuración",
             "2. Selección de Archivos",
             "3. Conversión",
-            "4. Resultados"
+            "4. Resultados",
+            "5. Generar Angular"
         ]
 
         for i, step_text in enumerate(steps):
@@ -161,6 +165,8 @@ class StepperApp:
             self.show_conversion_step()
         elif step_num == 3:
             self.show_results_step()
+        elif step_num == 4:
+            self.show_angular_generation_step()
 
         # Update stepper visual
         self.update_stepper()
@@ -430,6 +436,9 @@ Configuración:
         successful = sum(1 for r in self.conversion_results if r['success'])
         failed = len(self.conversion_results) - successful
 
+        # Recolectar XMLs exitosos para paso Angular
+        self.xml_files = [r['output_file'] for r in self.conversion_results if r['success']]
+
         summary_text = f"Conversión completada: {successful} exitosos, {failed} fallidos"
         summary_label = ttk.Label(
             step_frame,
@@ -496,6 +505,97 @@ Configuración:
             text="Exportar Log",
             command=self.export_log
         ).pack(side=tk.LEFT, padx=5)
+
+    def show_angular_generation_step(self):
+        """Step 5: Generate Angular Components"""
+        step_frame = ttk.LabelFrame(
+            self.content_frame,
+            text="Generar Componentes Angular",
+            padding="20"
+        )
+        step_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=20, pady=20)
+        step_frame.columnconfigure(0, weight=1)
+        step_frame.rowconfigure(2, weight=1)
+
+        # Info section
+        info_text = f"""
+🚀 Pipeline de Migración a Angular
+
+Esta etapa genera automáticamente componentes Angular a partir de los {len(self.xml_files)} archivos XML convertidos exitosamente.
+
+¿Qué se generará?
+✅ Modelos TypeScript (interfaces con tipado fuerte)
+✅ Servicios Angular (operaciones CRUD con HttpClient)
+✅ Componentes Angular (.ts, .html, .css)
+✅ Formularios Reactivos (con validaciones automáticas)
+✅ Tablas de datos (con acciones CRUD)
+✅ Reporte HTML (documentación detallada)
+
+Directorio de salida: angular_output/
+        """
+
+        info_label = ttk.Label(
+            step_frame,
+            text=info_text.strip(),
+            justify=tk.LEFT,
+            font=("Arial", 10)
+        )
+        info_label.grid(row=0, column=0, pady=10, sticky=tk.W)
+
+        # Output directory selector
+        dir_frame = ttk.Frame(step_frame)
+        dir_frame.grid(row=1, column=0, pady=10, sticky=(tk.W, tk.E))
+        dir_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(dir_frame, text="Directorio Angular:").grid(row=0, column=0, padx=5, sticky=tk.W)
+
+        self.angular_output_var = tk.StringVar(value=os.path.join(os.getcwd(), 'angular_output'))
+        ttk.Entry(dir_frame, textvariable=self.angular_output_var, width=50).grid(row=0, column=1, padx=5, sticky=(tk.W, tk.E))
+
+        ttk.Button(
+            dir_frame,
+            text="Examinar...",
+            command=self.browse_angular_output
+        ).grid(row=0, column=2, padx=5)
+
+        # Generation log area
+        log_frame = ttk.LabelFrame(step_frame, text="Log de Generación", padding="10")
+        log_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=10)
+        log_frame.columnconfigure(0, weight=1)
+        log_frame.rowconfigure(0, weight=1)
+
+        self.angular_log_text = scrolledtext.ScrolledText(
+            log_frame,
+            height=15,
+            width=80,
+            state=tk.DISABLED
+        )
+        self.angular_log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        # Buttons
+        btn_frame = ttk.Frame(step_frame)
+        btn_frame.grid(row=3, column=0, pady=10)
+
+        self.generate_angular_button = ttk.Button(
+            btn_frame,
+            text="🚀 Generar Componentes Angular",
+            command=self.start_angular_generation
+        )
+        self.generate_angular_button.pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(
+            btn_frame,
+            text="📂 Abrir Carpeta Angular",
+            command=self.open_angular_folder
+        ).pack(side=tk.LEFT, padx=5)
+
+        self.open_report_button = ttk.Button(
+            btn_frame,
+            text="📊 Ver Reporte HTML",
+            command=self.open_angular_report,
+            state=tk.DISABLED
+        )
+        self.open_report_button.pack(side=tk.LEFT, padx=5)
 
     # Event handlers
     def browse_oracle_home(self):
@@ -955,6 +1055,154 @@ Configuración:
             self.current_step -= 1
             self.show_step(self.current_step)
 
+    def browse_angular_output(self):
+        """Browse for Angular output directory"""
+        directory = filedialog.askdirectory(title="Seleccionar directorio de salida Angular")
+        if directory:
+            self.angular_output_var.set(directory)
+
+    def log_angular_message(self, message):
+        """Add message to Angular generation log"""
+        self.angular_log_text.config(state=tk.NORMAL)
+        self.angular_log_text.insert(tk.END, message + '\n')
+        self.angular_log_text.see(tk.END)
+        self.angular_log_text.config(state=tk.DISABLED)
+        self.root.update_idletasks()
+
+    def start_angular_generation(self):
+        """Start Angular component generation"""
+        if not self.xml_files:
+            messagebox.showwarning(
+                "Sin archivos XML",
+                "No hay archivos XML para procesar. Por favor complete la conversión primero."
+            )
+            return
+
+        self.generate_angular_button.config(state=tk.DISABLED)
+        self.log_angular_message("="*70)
+        self.log_angular_message("INICIANDO GENERACIÓN DE COMPONENTES ANGULAR")
+        self.log_angular_message("="*70)
+        self.log_angular_message(f"Archivos XML a procesar: {len(self.xml_files)}")
+        self.log_angular_message("")
+
+        output_dir = self.angular_output_var.get()
+
+        try:
+            # Crear generador
+            self.log_angular_message("Inicializando generador Angular...")
+            generator = AngularGenerator(output_dir)
+            self.log_angular_message(f"✓ Directorio de salida: {output_dir}")
+            self.log_angular_message("")
+
+            # Procesar cada XML
+            self.angular_results = []
+
+            for i, xml_file in enumerate(self.xml_files, 1):
+                self.log_angular_message(f"[{i}/{len(self.xml_files)}] Procesando: {os.path.basename(xml_file)}")
+
+                result = generator.generate_from_xml(xml_file)
+
+                if result.get('success'):
+                    self.angular_results.append(result)
+                    summary = result.get('summary', {})
+
+                    self.log_angular_message(f"  ✓ Form: {result.get('form_name')}")
+                    self.log_angular_message(f"    - Modelos: {summary.get('models_generated', 0)}")
+                    self.log_angular_message(f"    - Servicios: {summary.get('services_generated', 0)}")
+                    self.log_angular_message(f"    - Componentes: {summary.get('components_generated', 0)}")
+                    self.log_angular_message(f"    - Total archivos: {summary.get('total_files', 0)}")
+                else:
+                    self.log_angular_message(f"  ✗ Error: {result.get('error', 'Unknown error')}")
+
+                self.log_angular_message("")
+
+            # Generar reporte
+            self.log_angular_message("Generando reporte HTML...")
+            report_file = os.path.join(output_dir, 'migration_report.html')
+            generator.generate_summary_report(self.angular_results, report_file)
+            self.log_angular_message(f"✓ Reporte generado: {report_file}")
+            self.log_angular_message("")
+
+            # Resumen final
+            successful = len([r for r in self.angular_results if r.get('success')])
+            total_models = sum(r.get('summary', {}).get('models_generated', 0) for r in self.angular_results)
+            total_services = sum(r.get('summary', {}).get('services_generated', 0) for r in self.angular_results)
+            total_components = sum(r.get('summary', {}).get('components_generated', 0) for r in self.angular_results)
+
+            self.log_angular_message("="*70)
+            self.log_angular_message("GENERACIÓN COMPLETADA")
+            self.log_angular_message("="*70)
+            self.log_angular_message(f"Forms procesados: {len(self.angular_results)}")
+            self.log_angular_message(f"Exitosos: {successful}")
+            self.log_angular_message(f"")
+            self.log_angular_message(f"Componentes generados:")
+            self.log_angular_message(f"  - Modelos: {total_models}")
+            self.log_angular_message(f"  - Servicios: {total_services}")
+            self.log_angular_message(f"  - Componentes: {total_components}")
+            self.log_angular_message(f"")
+            self.log_angular_message(f"Directorio: {output_dir}")
+            self.log_angular_message("="*70)
+
+            # Habilitar botón de reporte
+            self.open_report_button.config(state=tk.NORMAL)
+
+            messagebox.showinfo(
+                "Generación Exitosa",
+                f"Se generaron componentes Angular exitosamente.\n\n"
+                f"Modelos: {total_models}\n"
+                f"Servicios: {total_services}\n"
+                f"Componentes: {total_components}\n\n"
+                f"Revisa el reporte HTML para más detalles."
+            )
+
+        except Exception as e:
+            self.log_angular_message(f"✗ ERROR: {str(e)}")
+            self.log_angular_message("")
+            import traceback
+            self.log_angular_message(traceback.format_exc())
+
+            messagebox.showerror(
+                "Error de Generación",
+                f"Ocurrió un error durante la generación:\n\n{str(e)}"
+            )
+
+        finally:
+            self.generate_angular_button.config(state=tk.NORMAL)
+
+    def open_angular_folder(self):
+        """Open Angular output folder"""
+        output_dir = self.angular_output_var.get()
+
+        if os.path.exists(output_dir):
+            import platform
+            import subprocess
+
+            if platform.system() == 'Windows':
+                os.startfile(output_dir)
+            elif platform.system() == 'Darwin':  # macOS
+                subprocess.run(['open', output_dir])
+            else:  # Linux
+                subprocess.run(['xdg-open', output_dir])
+        else:
+            messagebox.showwarning(
+                "Carpeta no existe",
+                f"La carpeta de salida aún no existe:\n{output_dir}"
+            )
+
+    def open_angular_report(self):
+        """Open Angular migration report"""
+        output_dir = self.angular_output_var.get()
+        report_file = os.path.join(output_dir, 'migration_report.html')
+
+        if os.path.exists(report_file):
+            import webbrowser
+            webbrowser.open('file://' + os.path.abspath(report_file))
+        else:
+            messagebox.showwarning(
+                "Reporte no encontrado",
+                "El reporte HTML aún no ha sido generado."
+            )
+
     def finish(self):
         """Finish the wizard"""
         result = messagebox.askyesno(
@@ -966,6 +1214,8 @@ Configuración:
             # Reset to file selection step
             self.selected_files.clear()
             self.conversion_results.clear()
+            self.xml_files.clear()
+            self.angular_results.clear()
             self.current_step = 1
             self.show_step(self.current_step)
         else:
