@@ -202,7 +202,10 @@ class StepperApp:
 
         # Oracle Home path
         ttk.Label(step_frame, text="Oracle Forms Home:").grid(row=1, column=0, sticky=tk.W, pady=(10, 5))
-        self.oracle_home_var = tk.StringVar(value=self.config_manager.get_oracle_home())
+
+        # Try to get from environment first, then from config file
+        oracle_home_value = os.environ.get('ORACLE_HOME', '') or self.config_manager.get_oracle_home()
+        self.oracle_home_var = tk.StringVar(value=oracle_home_value)
         oracle_entry = ttk.Entry(step_frame, textvariable=self.oracle_home_var, width=50)
         oracle_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=10, pady=(10, 5))
 
@@ -224,7 +227,10 @@ class StepperApp:
 
         # JAVA_HOME path
         ttk.Label(step_frame, text="JAVA_HOME (opcional):").grid(row=3, column=0, sticky=tk.W, pady=(10, 5))
-        self.java_home_var = tk.StringVar(value=self.config_manager.get_java_home())
+
+        # Try to get from environment first, then from config file
+        java_home_value = os.environ.get('JAVA_HOME', '') or self.config_manager.get_java_home()
+        self.java_home_var = tk.StringVar(value=java_home_value)
         java_entry = ttk.Entry(step_frame, textvariable=self.java_home_var, width=50)
         java_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=10, pady=(10, 5))
 
@@ -273,9 +279,8 @@ class StepperApp:
             command=self.show_diagnostic
         ).pack(side=tk.LEFT, padx=5)
 
-        # Auto-detect on first load if fields are empty
-        if not self.oracle_home_var.get() and not self.java_home_var.get():
-            self.root.after(100, self.auto_detect_paths)
+        # Always run auto-detect to update status labels
+        self.root.after(100, self.update_detection_status)
 
         # Info label
         info_text = """
@@ -505,62 +510,85 @@ Configuración:
         if directory:
             self.output_dir_var.set(directory)
 
+    def update_detection_status(self):
+        """Update status labels based on current values (doesn't change field values)"""
+        oracle_home = self.oracle_home_var.get()
+        java_home = self.java_home_var.get()
+
+        # Check Oracle Home source
+        if oracle_home:
+            if os.environ.get('ORACLE_HOME') == oracle_home:
+                self.oracle_status_label.config(
+                    text="✓ ORACLE_HOME environment variable",
+                    foreground="green"
+                )
+            elif os.path.exists(oracle_home):
+                self.oracle_status_label.config(
+                    text="✓ Configurado manualmente",
+                    foreground="green"
+                )
+            else:
+                self.oracle_status_label.config(
+                    text="✗ Ruta no existe",
+                    foreground="red"
+                )
+        else:
+            self.oracle_status_label.config(
+                text="⚠ No configurado",
+                foreground="orange"
+            )
+
+        # Check Java Home source
+        if java_home:
+            if os.environ.get('JAVA_HOME') == java_home:
+                self.java_status_label.config(
+                    text="✓ JAVA_HOME environment variable",
+                    foreground="green"
+                )
+            elif os.path.exists(java_home):
+                self.java_status_label.config(
+                    text="✓ Configurado manualmente",
+                    foreground="green"
+                )
+            else:
+                self.java_status_label.config(
+                    text="✗ Ruta no existe",
+                    foreground="red"
+                )
+        else:
+            self.java_status_label.config(
+                text="ℹ Opcional (se usará Java de Oracle)",
+                foreground="gray"
+            )
+
+        # Update main status
+        if oracle_home and os.path.exists(oracle_home):
+            self.detection_status_label.config(
+                text="✓ Configuración detectada del sistema",
+                foreground="green"
+            )
+        else:
+            self.detection_status_label.config(
+                text="⚠ Configure las rutas manualmente",
+                foreground="orange"
+            )
+
     def auto_detect_paths(self):
-        """Auto-detect Oracle Home and Java Home from environment"""
+        """Auto-detect Oracle Home and Java Home from environment and UPDATE field values"""
         detection_results = self.config_manager.auto_detect_all()
 
         # Update Oracle Home
         oracle_home = detection_results['oracle_home']
-        oracle_source = detection_results['oracle_source']
-
         if oracle_home:
-            # Only update if current value is empty
-            if not self.oracle_home_var.get():
-                self.oracle_home_var.set(oracle_home)
-            self.oracle_status_label.config(
-                text=f"✓ {oracle_source}",
-                foreground="green"
-            )
-        else:
-            self.oracle_status_label.config(
-                text=f"✗ {oracle_source}",
-                foreground="orange"
-            )
+            self.oracle_home_var.set(oracle_home)
 
         # Update Java Home
         java_home = detection_results['java_home']
-        java_source = detection_results['java_source']
-
         if java_home:
-            # Only update if current value is empty
-            if not self.java_home_var.get():
-                self.java_home_var.set(java_home)
-            self.java_status_label.config(
-                text=f"✓ {java_source}",
-                foreground="green"
-            )
-        else:
-            self.java_status_label.config(
-                text=f"ℹ {java_source}",
-                foreground="gray"
-            )
+            self.java_home_var.set(java_home)
 
-        # Update detection status
-        if oracle_home and java_home:
-            self.detection_status_label.config(
-                text="✓ Detección completada exitosamente",
-                foreground="green"
-            )
-        elif oracle_home:
-            self.detection_status_label.config(
-                text="✓ Oracle detectado. Java será usado desde Oracle.",
-                foreground="green"
-            )
-        else:
-            self.detection_status_label.config(
-                text="⚠ No se pudo detectar Oracle Home automáticamente",
-                foreground="orange"
-            )
+        # Update status labels
+        self.update_detection_status()
 
     def test_configuration(self):
         """Test if configuration is valid"""
