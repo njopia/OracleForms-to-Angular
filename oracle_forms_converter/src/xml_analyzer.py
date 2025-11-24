@@ -77,59 +77,69 @@ class FormsXMLAnalyzer:
         if self.root is None:
             return data_blocks
 
-        # Buscar todos los elementos Block o DataBlock
-        for block in self.root.findall('.//Block') or self.root.findall('.//DataBlock'):
+        # Definir namespace si existe
+        ns = {'ns': 'http://xmlns.oracle.com/Forms'} if 'xmlns' in self.root.attrib else {}
+
+        # Buscar todos los elementos Block (con o sin namespace)
+        blocks = self.root.findall('.//ns:Block', ns) if ns else self.root.findall('.//Block')
+
+        for block in blocks:
             block_info = {
                 'name': block.get('Name', 'UNNAMED'),
-                'query_data_source_name': block.findtext('QueryDataSourceName', ''),
-                'query_data_source_type': block.findtext('QueryDataSourceType', ''),
-                'database_table': block.findtext('DatabaseTable', ''),
-                'items': self._extract_block_items(block),
-                'triggers': self._extract_element_triggers(block),
-                'relations': self._extract_block_relations(block),
+                'query_data_source_name': block.get('QueryDataSourceName', ''),
+                'query_data_source_type': block.get('QueryDataSourceType', ''),
+                'database_table': block.get('DatabaseBlock', ''),
+                'items': self._extract_block_items(block, ns),
+                'triggers': self._extract_element_triggers(block, ns),
+                'relations': self._extract_block_relations(block, ns),
             }
             data_blocks.append(block_info)
 
         return data_blocks
 
-    def _extract_block_items(self, block) -> List[Dict]:
+    def _extract_block_items(self, block, ns: dict) -> List[Dict]:
         """Extrae todos los items de un Data Block"""
         items = []
 
-        for item in block.findall('.//Item'):
+        # Buscar items con namespace si existe
+        item_elements = block.findall('.//ns:Item', ns) if ns else block.findall('.//Item')
+
+        for item in item_elements:
             item_info = {
                 'name': item.get('Name', 'UNNAMED'),
-                'item_type': item.findtext('ItemType', ''),
-                'data_type': item.findtext('DataType', ''),
-                'database_item': item.findtext('DatabaseItem', 'false'),
-                'column_name': item.findtext('ColumnName', ''),
-                'required': item.findtext('Required', 'false'),
-                'max_length': item.findtext('MaximumLength', ''),
-                'format_mask': item.findtext('FormatMask', ''),
-                'default_value': item.findtext('DefaultValue', ''),
-                'prompt': item.findtext('PromptText', ''),
-                'canvas': item.findtext('Canvas', ''),
-                'x_position': item.findtext('XPosition', ''),
-                'y_position': item.findtext('YPosition', ''),
-                'width': item.findtext('Width', ''),
-                'height': item.findtext('Height', ''),
-                'lov': item.findtext('ListOfValues', ''),
-                'triggers': self._extract_element_triggers(item),
+                'item_type': item.get('ItemType', ''),
+                'data_type': item.get('DataType', ''),
+                'database_item': item.get('DatabaseItem', 'false'),
+                'column_name': item.get('ColumnName', ''),
+                'required': item.get('Required', 'false'),
+                'max_length': item.get('MaximumLength', ''),
+                'format_mask': item.get('FormatMask', ''),
+                'default_value': item.get('DefaultValue', ''),
+                'prompt': item.get('PromptText', ''),
+                'canvas': item.get('CanvasName', ''),
+                'x_position': item.get('XPosition', ''),
+                'y_position': item.get('YPosition', ''),
+                'width': item.get('Width', ''),
+                'height': item.get('Height', ''),
+                'lov': item.get('ListOfValues', ''),
+                'triggers': self._extract_element_triggers(item, ns),
             }
             items.append(item_info)
 
         return items
 
-    def _extract_block_relations(self, block) -> List[Dict]:
+    def _extract_block_relations(self, block, ns: dict) -> List[Dict]:
         """Extrae las relaciones de un Data Block"""
         relations = []
 
-        for relation in block.findall('.//Relation'):
+        relation_elements = block.findall('.//ns:Relation', ns) if ns else block.findall('.//Relation')
+
+        for relation in relation_elements:
             relation_info = {
                 'name': relation.get('Name', 'UNNAMED'),
-                'detail_block': relation.findtext('DetailBlock', ''),
-                'master_deletes': relation.findtext('MasterDeletes', ''),
-                'join_condition': relation.findtext('JoinCondition', ''),
+                'detail_block': relation.get('DetailBlock', ''),
+                'master_deletes': relation.get('MasterDeletes', ''),
+                'join_condition': relation.get('JoinCondition', ''),
             }
             relations.append(relation_info)
 
@@ -184,19 +194,25 @@ class FormsXMLAnalyzer:
         """Extrae todos los triggers a nivel de formulario"""
         return self._extract_element_triggers(self.root)
 
-    def _extract_element_triggers(self, element) -> List[Dict]:
+    def _extract_element_triggers(self, element, ns: dict = None) -> List[Dict]:
         """Extrae triggers de un elemento específico"""
         triggers = []
 
         if element is None:
             return triggers
 
-        for trigger in element.findall('.//Trigger'):
+        # Si no se pasa namespace, intentar detectarlo
+        if ns is None:
+            ns = {'ns': 'http://xmlns.oracle.com/Forms'} if element.tag.startswith('{') else {}
+
+        trigger_elements = element.findall('.//ns:Trigger', ns) if ns else element.findall('.//Trigger')
+
+        for trigger in trigger_elements:
             trigger_info = {
                 'name': trigger.get('Name', 'UNNAMED'),
-                'trigger_text': trigger.findtext('TriggerText', ''),
-                'execution_hierarchy': trigger.findtext('ExecutionHierarchy', ''),
-                'fire_in_query': trigger.findtext('FireInQuery', ''),
+                'trigger_text': trigger.get('TriggerText', ''),
+                'execution_hierarchy': trigger.get('ExecutionHierarchy', ''),
+                'fire_in_query': trigger.get('FireInQuery', ''),
             }
             triggers.append(trigger_info)
 
