@@ -359,7 +359,7 @@ class ComponentGenerator:
             lines.append(f'      <div *ngIf="{form_var_name}.get(\'{property_name}\')?.invalid && {form_var_name}.get(\'{property_name}\')?.touched"')
             lines.append('           class="error-message">')
             if required:
-                lines.append(f'        <small *ngIf="{form_var_name}.get(\'{property_name}\')?.errors?.[\\'required\\']">')
+                lines.append(f"        <small *ngIf=\"{form_var_name}.get('{property_name}')?.errors?.['required']\">")
                 lines.append(f'          {prompt} is required')
                 lines.append('        </small>')
             lines.append('      </div>')
