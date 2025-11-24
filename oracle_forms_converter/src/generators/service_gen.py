@@ -3,7 +3,7 @@ Generador de servicios Angular a partir de Data Blocks de Oracle Forms
 """
 import os
 from typing import Dict, List
-from ..naming_convention import NamingConvention
+from naming_convention import NamingConvention
 
 
 class ServiceGenerator:

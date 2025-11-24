@@ -6,10 +6,10 @@ import json
 from typing import Dict, List
 from datetime import datetime
 
-from .xml_analyzer import FormsXMLAnalyzer
-from .generators.model_gen import ModelGenerator
-from .generators.service_gen import ServiceGenerator
-from .generators.component_gen import ComponentGenerator
+from xml_analyzer import FormsXMLAnalyzer
+from generators.model_gen import ModelGenerator
+from generators.service_gen import ServiceGenerator
+from generators.component_gen import ComponentGenerator
 
 
 class AngularGenerator:

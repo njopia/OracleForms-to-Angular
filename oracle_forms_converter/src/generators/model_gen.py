@@ -3,8 +3,8 @@ Generador de modelos TypeScript/Interfaces a partir de Data Blocks de Oracle For
 """
 import os
 from typing import Dict, List
-from ..naming_convention import NamingConvention
-from ..type_mapper import TypeMapper
+from naming_convention import NamingConvention
+from type_mapper import TypeMapper
 
 
 class ModelGenerator:

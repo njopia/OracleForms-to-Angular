@@ -3,8 +3,8 @@ Generador de componentes Angular a partir de Data Blocks y Canvases de Oracle Fo
 """
 import os
 from typing import Dict, List
-from ..naming_convention import NamingConvention
-from ..type_mapper import TypeMapper
+from naming_convention import NamingConvention
+from type_mapper import TypeMapper
 
 
 class ComponentGenerator:
