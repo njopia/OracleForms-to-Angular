@@ -9,11 +9,39 @@ from pathlib import Path
 import shutil
 
 
+# Supported Oracle Forms file formats
+# These are the binary source files that can be converted to XML
+SUPPORTED_FORMATS = {
+    '.fmb': 'Forms Module Binary (formularios)',
+    '.mmb': 'Menu Module Binary (menús)',
+    '.olb': 'Object Library Binary (bibliotecas de objetos)',
+    '.pll': 'PL/SQL Library (bibliotecas de código PL/SQL)',
+    # Note: .rdf (Reports) might not be supported by frmf2xml.bat
+    # Test if needed in the future
+}
+
+
 class FormsConverter:
     def __init__(self):
         self.oracle_home = None
         self.java_home = None
         self.output_dir = None
+
+    @staticmethod
+    def get_supported_formats():
+        """Get list of supported file formats"""
+        return SUPPORTED_FORMATS
+
+    @staticmethod
+    def get_supported_extensions():
+        """Get list of supported file extensions"""
+        return list(SUPPORTED_FORMATS.keys())
+
+    @staticmethod
+    def is_supported_format(file_path):
+        """Check if a file format is supported"""
+        ext = os.path.splitext(file_path)[1].lower()
+        return ext in SUPPORTED_FORMATS
 
     def set_config(self, oracle_home, java_home, output_dir):
         """Set configuration paths"""
@@ -117,8 +145,9 @@ ENDLOCAL
 
             # Get file extension
             file_ext = os.path.splitext(input_file)[1].lower()
-            if file_ext not in ['.fmb', '.mmb', '.olb']:
-                result['error'] = f"Formato no soportado: {file_ext}"
+            if file_ext not in SUPPORTED_FORMATS:
+                supported = ', '.join(SUPPORTED_FORMATS.keys())
+                result['error'] = f"Formato no soportado: {file_ext}. Soportados: {supported}"
                 return result
 
             # Prepare output file path

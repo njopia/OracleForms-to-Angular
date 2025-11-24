@@ -43,6 +43,18 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Agregado
+- ✨ Soporte genérico para todos los tipos de archivos Oracle Forms (.fmb, .mmb, .olb, .pll)
+- 🔧 Sistema de formato de archivos dinámico y extensible
+- 🔧 Métodos estáticos para validación de formatos soportados
+- 📝 Detección automática de formatos en diálogos de selección de archivos
+- 📝 Visualización dinámica de formatos admitidos en la interfaz
+
+### Cambiado
+- 🔄 Refactorizado sistema de extensiones de archivo para ser genérico
+- 🔄 Los diálogos de selección de archivos ahora se construyen dinámicamente
+- 🔄 La interfaz muestra automáticamente todos los formatos soportados
+
 ### Planeado para futuras versiones
 - Soporte para Linux/Mac (scripts shell en lugar de .bat)
 - Conversión paralela de múltiples archivos

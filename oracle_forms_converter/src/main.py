@@ -358,7 +358,10 @@ Configuración:
         info_text = f"Archivos seleccionados: {len(self.selected_files)}"
         ttk.Label(step_frame, text=info_text, font=("Arial", 10, "bold")).grid(row=3, column=0)
 
-        formats_text = "Formatos admitidos: .fmb (Forms), .mmb (Menus), .olb (Object Libraries)"
+        # Build formats text dynamically from converter
+        formats = self.converter.get_supported_formats()
+        format_descriptions = [f"{ext} ({desc})" for ext, desc in formats.items()]
+        formats_text = "Formatos admitidos: " + ", ".join(format_descriptions)
         ttk.Label(step_frame, text=formats_text, foreground="gray").grid(row=4, column=0)
 
     def show_conversion_step(self):
@@ -757,8 +760,12 @@ Configuración:
 
     def add_files(self):
         """Add individual files"""
+        # Get supported formats dynamically from converter
+        extensions = self.converter.get_supported_extensions()
+        patterns = ' '.join([f'*{ext}' for ext in extensions])
+
         filetypes = (
-            ('Oracle Forms Files', '*.fmb *.mmb *.olb'),
+            ('Oracle Forms Files', patterns),
             ('All files', '*.*')
         )
         files = filedialog.askopenfilenames(
@@ -775,7 +782,8 @@ Configuración:
         """Add all Oracle Forms files from a directory"""
         directory = filedialog.askdirectory(title="Seleccionar directorio")
         if directory:
-            extensions = ['.fmb', '.mmb', '.olb']
+            # Get supported extensions dynamically from converter
+            extensions = self.converter.get_supported_extensions()
             for root, dirs, files in os.walk(directory):
                 for file in files:
                     if any(file.lower().endswith(ext) for ext in extensions):
