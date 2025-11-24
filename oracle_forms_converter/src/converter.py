@@ -129,10 +129,12 @@ ENDLOCAL
             oracle_bat = self.find_oracle_frmf2xml_bat()
             batch_script = None
             cleanup_batch = False
+            using_oracle_bat = False
 
             if oracle_bat:
                 # Use Oracle's original batch script
                 batch_script = oracle_bat
+                using_oracle_bat = True
                 result['conversion_method'] = f'Oracle original: {oracle_bat}'
             else:
                 # Create our own temporary batch script as fallback
@@ -143,14 +145,22 @@ ENDLOCAL
                 result['conversion_method'] = 'Generated batch script'
 
             try:
-                # Prepare command
-                # Forms2XML syntax: Forms2XML source=input.fmb dest=output.xml overwrite=yes
-                cmd = [
-                    batch_script,
-                    f'source={input_file}',
-                    f'dest={output_file}',
-                    'overwrite=yes'
-                ]
+                # Prepare command based on which script we're using
+                if using_oracle_bat:
+                    # Oracle's frmf2xml.bat syntax: frmf2xml.bat "archivo.fmb"
+                    # Creates XML in the same directory as the input file
+                    cmd = [batch_script, input_file]
+                    # Calculate where Oracle will create the XML
+                    temp_xml = os.path.splitext(input_file)[0] + '.xml'
+                else:
+                    # Our generated script syntax: script source=input.fmb dest=output.xml overwrite=yes
+                    cmd = [
+                        batch_script,
+                        f'source={input_file}',
+                        f'dest={output_file}',
+                        'overwrite=yes'
+                    ]
+                    temp_xml = None
 
                 # Set environment variables
                 env = os.environ.copy()
@@ -173,12 +183,30 @@ ENDLOCAL
 
                 stdout, stderr = process.communicate(timeout=120)  # 2 minute timeout
 
-                # Check if output file was created
-                if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
-                    result['success'] = True
-                    result['output_file'] = output_file
+                # Check if output file was created based on which method we used
+                if using_oracle_bat:
+                    # Oracle creates XML in the same directory as input file
+                    if temp_xml and os.path.exists(temp_xml) and os.path.getsize(temp_xml) > 0:
+                        # Move the XML from input directory to our output directory
+                        try:
+                            if temp_xml != output_file:
+                                # Copy to output directory
+                                shutil.copy2(temp_xml, output_file)
+                                # Optionally remove the original (uncomment if desired)
+                                # os.remove(temp_xml)
+                            result['success'] = True
+                            result['output_file'] = output_file
+                        except Exception as e:
+                            result['error'] = f"Error moviendo XML: {str(e)}"
+                    else:
+                        result['error'] = f"No se generó el archivo XML. STDERR: {stderr}"
                 else:
-                    result['error'] = f"No se generó el archivo XML. STDERR: {stderr}"
+                    # Our generated script creates XML in the specified output location
+                    if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+                        result['success'] = True
+                        result['output_file'] = output_file
+                    else:
+                        result['error'] = f"No se generó el archivo XML. STDERR: {stderr}"
 
             finally:
                 # Clean up temporary batch file (only if we created it)
