@@ -33,7 +33,6 @@ wheels/
 
 # Application specific
 oracle_forms_converter/config/settings.json
-oracle_forms_converter/output/*.xml
 oracle_forms_converter/logs/*.log
 *.log
 
@@ -45,3 +44,19 @@ oracle_forms_converter/logs/*.log
 # Test files
 test_forms/
 sample_output/
+
+# Directorios de salida de conversión
+oracle_forms_converter/output/
+migration_work/
+angular_output/
+xml_output/
+
+# Archivos generados por conversión
+*.fmb.xml
+*_fmb.xml
+*_mmb.xml
+*_olb.xml
+*_pll.xml
+
+# Reportes HTML generados
+migration_report.html
