@@ -60,3 +60,7 @@ xml_output/
 
 # Reportes HTML generados
 migration_report.html
+
+# Archivos de imagen TIF
+*.tif
+*.tiff
