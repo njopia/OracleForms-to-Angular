@@ -77,8 +77,8 @@ class FormsXMLAnalyzer:
         if self.root is None:
             return data_blocks
 
-        # Definir namespace si existe
-        ns = {'ns': 'http://xmlns.oracle.com/Forms'} if 'xmlns' in self.root.attrib else {}
+        # Definir namespace si existe (detectar por el tag que incluye namespace)
+        ns = {'ns': 'http://xmlns.oracle.com/Forms'} if self.root.tag.startswith('{') else {}
 
         # Buscar todos los elementos Block (con o sin namespace)
         blocks = self.root.findall('.//ns:Block', ns) if ns else self.root.findall('.//Block')
@@ -201,9 +201,12 @@ class FormsXMLAnalyzer:
         if element is None:
             return triggers
 
-        # Si no se pasa namespace, intentar detectarlo
+        # Si no se pasa namespace, intentar detectarlo desde el root
         if ns is None:
-            ns = {'ns': 'http://xmlns.oracle.com/Forms'} if element.tag.startswith('{') else {}
+            if self.root is not None and self.root.tag.startswith('{'):
+                ns = {'ns': 'http://xmlns.oracle.com/Forms'}
+            else:
+                ns = {}
 
         trigger_elements = element.findall('.//ns:Trigger', ns) if ns else element.findall('.//Trigger')
 
